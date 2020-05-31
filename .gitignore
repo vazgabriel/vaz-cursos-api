@@ -7,3 +7,5 @@ coverage
 tmp
 uploads/profile/*
 !uploads/profile/.gitkeep
+uploads/thumbnails/*
+!uploads/thumbnails/.gitkeep
