@@ -37,7 +37,10 @@ export default class AuthController {
   }
 
   public async renewToken ({ request }: HttpContextContract) {
-    return this.responseAuth(request.user as User)
+    const user = request.user as User
+    await user.preload('teacher')
+
+    return this.responseAuth(user)
   }
 
   private async responseAuth (user: User) {

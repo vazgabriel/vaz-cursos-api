@@ -5,7 +5,10 @@ API em Adonis (Node.js) para curso de Flutter
 ## Requirements
 
 [Node.js V12+](https://nodejs.org/)
-[NPM V6+](https://www.npmjs.com/) Vem com Node
+
+[NPM V6+](https://www.npmjs.com/) (Vem com Node)
+
+[Docker Compose](https://docs.docker.com/compose/)
 
 (Opcionalmente pode usar Yarn)
 
@@ -29,6 +32,12 @@ nano .env # Editar valores
 ```
 
 ## RUN
+
+Database
+
+```bash
+docker-compose up
+```
 
 Development
 

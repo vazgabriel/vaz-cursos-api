@@ -13,6 +13,7 @@ export default class Courses extends BaseSchema {
       table.string('short_description', 150).nullable()
       table.integer('minutes').defaultTo(0).notNullable().comment('Se for 0 = não definido')
       table.boolean('is_active').defaultTo(true).notNullable()
+      table.boolean('is_public').defaultTo(false).notNullable()
       table.integer('user_id').notNullable().comment('Teacher ID')
 
       table.timestamps(true)

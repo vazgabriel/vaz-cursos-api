@@ -23,7 +23,7 @@ export default class UsersController {
     const user = request.user as User
 
     const avatar = request.file('avatar', {
-      size: '2mb',
+      size: '10mb',
       extnames: ['jpg', 'png', 'jpeg'],
     })
 

@@ -40,6 +40,9 @@ export default class Course extends BaseModel {
   @column({ serializeAs: null })
   public isActive: boolean
 
+  @column({ serializeAs: null })
+  public isPublic: boolean
+
   @column()
   public userId: number
 
