@@ -4,10 +4,10 @@ import { BaseModel, column } from '@ioc:Adonis/Lucid/Orm'
 export default class CourseStudent extends BaseModel {
   public static table = 'course_students'
 
-  @column()
+  @column({ isPrimary: true })
   public courseId: number
 
-  @column()
+  @column({ isPrimary: true })
   public userId: number
 
   @column.dateTime({ autoCreate: true })
