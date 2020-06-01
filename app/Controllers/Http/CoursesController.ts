@@ -1,5 +1,7 @@
 import { v4 as uuid } from 'uuid'
 import Env from '@ioc:Adonis/Core/Env'
+// import Logger from '@ioc:Adonis/Core/Logger'
+import Database from '@ioc:Adonis/Lucid/Database'
 import Application from '@ioc:Adonis/Core/Application'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 
@@ -7,17 +9,69 @@ import Course from 'App/Models/Course'
 import UtilsService from 'App/Services/UtilsService'
 import SaveCourseValidator from 'App/Validators/SaveCourseValidator'
 
-/*
-Read (paginacao)/Read By Id/Create/Update/Delete
-*/
-
 export default class CoursesController {
   public async paginate ({ request }: HttpContextContract) {
+    let page = parseInt(request.only(['page']).page, 10)
 
+    if (!page || isNaN(page)) {
+      page = 1
+    }
+
+    return await Course
+      .query()
+      .select('id', 'name', 'short_description', 'thumbnail_url', 'user_id')
+      .preload('teacher', q => q.select('name', 'profile_image'))
+      .paginate(page, 8)
+  }
+
+  public async myCourses ({ request }: HttpContextContract) {
+    let page = parseInt(request.only(['page']).page, 10)
+
+    if (!page || isNaN(page) || page < 1) {
+      page = 1
+    }
+
+    const total = parseInt((
+      await Course
+        .query()
+        .from('courses as c')
+        .innerJoin('course_students as cs', 'cs.course_id', 'c.id')
+        .where('cs.user_id', request.user!.id)
+        .count('c.id', 'total')
+    )[0].total, 10)
+
+    const lastPage = Math.ceil(total / 8)
+
+    const meta = {
+      total,
+      per_page: 8,
+      current_page: page,
+      last_page: lastPage,
+      first_page: 1,
+      first_page_url: total === 0 ? null : '/?page=1',
+      last_page_url: total === 0 ? null : `/?page=${lastPage}`,
+      next_page_url: page >= lastPage ? null : `/?page=${page + 1}`,
+      previous_page_url: page === 1 ? null : `/?page=${page - 1}`,
+    }
+
+    const data = await Course
+      .query()
+      .select('c.id', 'c.name', 'c.short_description', 'c.thumbnail_url', 'c.user_id')
+      .from('courses as c')
+      .preload('teacher', q => q.select('name', 'profile_image'))
+      .innerJoin('course_students as cs', 'cs.course_id', 'c.id')
+      .where('cs.user_id', request.user!.id)
+      .limit(8)
+      .offset(8 * (page - 1))
+
+    return {
+      meta,
+      data,
+    }
   }
 
   public async get ({ params: { id } }: HttpContextContract) {
-    return await Course.query()
+    const course = (await Course.query()
       .select('id', 'name', 'thumbnail_url', 'description', 'minutes', 'user_id')
       .preload('requirements', q => q.select('description'))
       .preload('learnship', q => q.select('description'))
@@ -26,7 +80,36 @@ export default class CoursesController {
           .preload('teacher', qt => qt.select('short_description'))
       )
       .where('id', id)
-      .first()
+      .firstOrFail()).toJSON()
+
+    const { rows } = await Database.rawQuery(`
+      SELECT
+        (
+          SELECT AVG(cr.rate) as rate
+            FROM course_rates as cr
+            WHERE cr.course_id = c.id
+        ) as rate,
+        (
+          SELECT COUNT(cs.user_id) as students
+            FROM course_students as cs
+            WHERE cs.course_id = c.id
+        ) as students,
+        (
+          SELECT COUNT(cr.id) as total_reviews
+            FROM course_rates as cr
+            WHERE cr.course_id = c.id
+        ) as total_reviews
+        FROM courses as c
+        WHERE id = :id
+    `, { id })
+
+    const rate = parseFloat(rows[0].rate)
+
+    course.rate = isNaN(rate) ? 0 : rate
+    course.students = parseInt(rows[0].students, 10)
+    course.totalReviews = parseInt(rows[0].total_reviews, 10)
+
+    return course
   }
 
   /**
@@ -72,36 +155,49 @@ export default class CoursesController {
 
     const { name, description, shortDescription, minutes } = data
 
-    const course = await Course.create({
-      name,
-      description,
-      shortDescription,
-      minutes,
-      thumbnailUrl,
-      userId: request.user!.id,
+    let id = 0
+
+    await Database.transaction(async (trx) => {
+      const course = new Course()
+      course.name = name
+      course.description = description
+      course.shortDescription = shortDescription
+      course.minutes = minutes
+      course.thumbnailUrl = thumbnailUrl
+      course.userId = request.user!.id
+
+      course.useTransaction(trx)
+      await course.save()
+
+      id = course.id
+
+      let requirements = []
+      let learnship = []
+
+      if (data.requirements || data.learnship) {
+        try {
+          requirements = data.requirements ? JSON.parse(data.requirements) : []
+          learnship = data.learnship ? JSON.parse(data.learnship) : []
+        } catch (error) {}
+      }
+
+      if (requirements.length > 0) {
+        await course.related('requirements').attach(requirements)
+      }
+
+      if (learnship.length > 0) {
+        await course.related('learnship').attach(learnship)
+      }
     })
 
-    let requirements = []
-    let learnship = []
-
-    if (data.requirements || data.learnship) {
-      try {
-        requirements = data.requirements ? JSON.parse(data.requirements) : []
-        learnship = data.learnship ? JSON.parse(data.learnship) : []
-      } catch (error) {}
-    }
-
-    if (requirements.length > 0) {
-      await course.related('requirements').attach(requirements)
-      await course.preload('requirements')
-    }
-
-    if (learnship.length > 0) {
-      await course.related('learnship').attach(learnship)
-      await course.preload('learnship')
-    }
-
-    return response.created(course)
+    response.created(
+      await Course
+        .query()
+        .preload('requirements')
+        .preload('learnship')
+        .where('id', id)
+        .first()
+    )
   }
 
   /**
@@ -170,15 +266,19 @@ export default class CoursesController {
       } catch (error) {}
     }
 
-    if (requirements.length > 0) {
-      await course.related('requirements').attach(requirements)
-    }
+    await Database.transaction(async (trx) => {
+      course.useTransaction(trx)
 
-    if (learnship.length > 0) {
-      await course.related('learnship').attach(learnship)
-    }
+      if (requirements.length > 0) {
+        await course.related('requirements').attach(requirements)
+      }
 
-    await course.save()
+      if (learnship.length > 0) {
+        await course.related('learnship').attach(learnship)
+      }
+
+      await course.save()
+    })
 
     await course.preload('requirements')
     await course.preload('learnship')

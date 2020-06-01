@@ -7,7 +7,7 @@ export default class SaveCourseValidator {
 
   public schema = schema.create({
     name: schema.string({ trim: true }, [
-      rules.minLength(10),
+      rules.minLength(8),
       rules.maxLength(70),
     ]),
     description: schema.string({ trim: true }, [

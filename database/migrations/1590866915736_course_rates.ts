@@ -17,6 +17,8 @@ export default class CourseRates extends BaseSchema {
 
       table.foreign('course_id').references('courses.id')
       table.foreign('rated_by_id').references('users.id')
+
+      table.unique(['course_id', 'rated_by_id'])
     })
   }
 
