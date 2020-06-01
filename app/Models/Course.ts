@@ -63,12 +63,13 @@ export default class Course extends BaseModel {
   })
   public learnship: ManyToMany<typeof CourseLearnship>
 
-  @manyToMany(() => CourseLearnship, {
+  @manyToMany(() => User, {
     pivotTable: 'course_students',
     pivotForeignKey: 'course_id',
     pivotRelatedForeignKey: 'user_id',
+    pivotColumns: ['created_at'],
   })
-  public students: ManyToMany<typeof CourseLearnship>
+  public students: ManyToMany<typeof User>
 
   @hasMany(() => CourseRate)
   public reviews: HasMany<typeof CourseRate>

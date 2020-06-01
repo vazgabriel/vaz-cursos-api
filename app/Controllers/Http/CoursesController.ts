@@ -1,11 +1,12 @@
 import { v4 as uuid } from 'uuid'
 import Env from '@ioc:Adonis/Core/Env'
-// import Logger from '@ioc:Adonis/Core/Logger'
 import Database from '@ioc:Adonis/Lucid/Database'
 import Application from '@ioc:Adonis/Core/Application'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 
 import Course from 'App/Models/Course'
+import CourseStudent from 'App/Models/CourseStudent'
+
 import UtilsService from 'App/Services/UtilsService'
 import SaveCourseValidator from 'App/Validators/SaveCourseValidator'
 
@@ -70,6 +71,15 @@ export default class CoursesController {
     }
   }
 
+  public async subscribe ({ request, params: { id }, response }: HttpContextContract) {
+    return response.created(
+      await CourseStudent.create({
+        courseId: id,
+        userId: request.user!.id,
+      })
+    )
+  }
+
   public async get ({ params: { id } }: HttpContextContract) {
     const course = (await Course.query()
       .select('id', 'name', 'thumbnail_url', 'description', 'minutes', 'user_id')
@@ -112,9 +122,6 @@ export default class CoursesController {
     return course
   }
 
-  /**
-   * @TODO Criar com transaction
-   */
   // Authenticated
   public async create ({ request, response }: HttpContextContract) {
     await request.user!.preload('teacher')
@@ -182,11 +189,11 @@ export default class CoursesController {
       }
 
       if (requirements.length > 0) {
-        await course.related('requirements').attach(requirements)
+        await course.related('requirements').attach(requirements, trx)
       }
 
       if (learnship.length > 0) {
-        await course.related('learnship').attach(learnship)
+        await course.related('learnship').attach(learnship, trx)
       }
     })
 
@@ -200,9 +207,6 @@ export default class CoursesController {
     )
   }
 
-  /**
-   * @TODO Criar com transaction
-   */
   // Authenticated
   public async update ({ request, response, params }: HttpContextContract) {
     const course = await Course.query()
@@ -270,11 +274,11 @@ export default class CoursesController {
       course.useTransaction(trx)
 
       if (requirements.length > 0) {
-        await course.related('requirements').attach(requirements)
+        await course.related('requirements').attach(requirements, trx)
       }
 
       if (learnship.length > 0) {
-        await course.related('learnship').attach(learnship)
+        await course.related('learnship').attach(learnship, trx)
       }
 
       await course.save()

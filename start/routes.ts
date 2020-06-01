@@ -50,6 +50,7 @@ Route.group(() => {
   Route.get('/:id', 'CoursesController.get')
 
   Route.post('/', 'CoursesController.create').middleware('auth')
+  Route.post('/subscribe/:id', 'CoursesController.subscribe').middleware('auth')
 
   Route.put('/:id', 'CoursesController.update').middleware('auth')
   Route.delete('/:id', 'CoursesController.delete').middleware('auth')
