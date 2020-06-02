@@ -28,7 +28,7 @@ export default class CourseRate extends BaseModel {
   @column()
   public ratedById: number
 
-  @belongsTo(() => User, { foreignKey: 'rated_by_id' })
+  @belongsTo(() => User, { foreignKey: 'ratedById' })
   public ratedBy: BelongsTo<typeof User>
 
   @column.dateTime({ autoCreate: true })

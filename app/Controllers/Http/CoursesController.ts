@@ -4,6 +4,7 @@ import Database from '@ioc:Adonis/Lucid/Database'
 import Application from '@ioc:Adonis/Core/Application'
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 
+import User from 'App/Models/User'
 import Course from 'App/Models/Course'
 import CourseStudent from 'App/Models/CourseStudent'
 
@@ -22,6 +23,8 @@ export default class CoursesController {
       .query()
       .select('id', 'name', 'short_description', 'thumbnail_url', 'user_id')
       .preload('teacher', q => q.select('name', 'profile_image'))
+      .where('is_active', true)
+      .andWhere('is_public', true)
       .paginate(page, 8)
   }
 
@@ -38,6 +41,8 @@ export default class CoursesController {
         .from('courses as c')
         .innerJoin('course_students as cs', 'cs.course_id', 'c.id')
         .where('cs.user_id', request.user!.id)
+        .andWhere('c.is_active', true)
+        .andWhere('c.is_public', true)
         .count('c.id', 'total')
     )[0].total, 10)
 
@@ -62,6 +67,8 @@ export default class CoursesController {
       .preload('teacher', q => q.select('name', 'profile_image'))
       .innerJoin('course_students as cs', 'cs.course_id', 'c.id')
       .where('cs.user_id', request.user!.id)
+      .andWhere('c.is_active', true)
+      .andWhere('c.is_public', true)
       .limit(8)
       .offset(8 * (page - 1))
 
@@ -81,7 +88,15 @@ export default class CoursesController {
   }
 
   public async get ({ params: { id } }: HttpContextContract) {
-    const course = (await Course.query()
+    return this.getCourse(id)
+  }
+
+  public async myCourse ({ request: { user }, params: { id } }: HttpContextContract) {
+    return this.getCourse(id, user)
+  }
+
+  private async getCourse (id: number, user?: User) {
+    let baseQuery = Course.query()
       .select('id', 'name', 'thumbnail_url', 'description', 'minutes', 'user_id')
       .preload('requirements', q => q.select('description'))
       .preload('learnship', q => q.select('description'))
@@ -90,25 +105,33 @@ export default class CoursesController {
           .preload('teacher', qt => qt.select('short_description'))
       )
       .where('id', id)
-      .firstOrFail()).toJSON()
+      .andWhere('is_active', true)
+
+    if (!user) {
+      baseQuery = baseQuery.andWhere('is_public', true)
+    } else {
+      baseQuery = baseQuery.andWhere('user_id', user.id)
+    }
+
+    const course = (await baseQuery.firstOrFail()).toJSON()
 
     const { rows } = await Database.rawQuery(`
       SELECT
         (
           SELECT AVG(cr.rate) as rate
             FROM course_rates as cr
-            WHERE cr.course_id = c.id
+            WHERE cr.course_id = c.id AND cr.is_active = true
         ) as rate,
+        (
+          SELECT COUNT(cr.id) as total_reviews
+            FROM course_rates as cr
+            WHERE cr.course_id = c.id AND cr.is_active = true
+        ) as total_reviews,
         (
           SELECT COUNT(cs.user_id) as students
             FROM course_students as cs
             WHERE cs.course_id = c.id
-        ) as students,
-        (
-          SELECT COUNT(cr.id) as total_reviews
-            FROM course_rates as cr
-            WHERE cr.course_id = c.id
-        ) as total_reviews
+        ) as students
         FROM courses as c
         WHERE id = :id
     `, { id })
@@ -212,13 +235,8 @@ export default class CoursesController {
     const course = await Course.query()
       .where('id', params.id)
       .andWhere('user_id', request.user!.id)
-      .first()
-
-    if (!course || !course.isActive) {
-      return response.notFound(
-        UtilsService.formatErrors(['Curso não encontrado'])
-      )
-    }
+      .andWhere('is_active', true)
+      .firstOrFail()
 
     const data = await request.validate(SaveCourseValidator)
 
@@ -290,18 +308,38 @@ export default class CoursesController {
     return course
   }
 
+  public async publish ({ request: { user }, params: { id } }: HttpContextContract) {
+    return this.changePublic(user!, id, true)
+  }
+
+  public async unpublish ({ request: { user }, params: { id } }: HttpContextContract) {
+    return this.changePublic(user!, id, false)
+  }
+
+  private async changePublic (user: User, id: number, toPublic: boolean) {
+    const course = await Course.query()
+      .where('id', id)
+      .andWhere('user_id', user.id)
+      .andWhere('is_active', true)
+      .andWhere('is_public', !toPublic)
+      .firstOrFail()
+
+    course.isPublic = toPublic
+    await course.save()
+
+    await course.preload('requirements')
+    await course.preload('learnship')
+
+    return course
+  }
+
   // Authenticated
   public async delete ({ request, response, params }: HttpContextContract) {
     const course = await Course.query()
       .where('id', params.id)
       .andWhere('user_id', request.user!.id)
-      .first()
-
-    if (!course || !course.isActive) {
-      return response.notFound(
-        UtilsService.formatErrors(['Curso não encontrado'])
-      )
-    }
+      .andWhere('is_active', true)
+      .firstOrFail()
 
     course.isActive = false
     await course.save()
