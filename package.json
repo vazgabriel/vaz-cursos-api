@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node ace build",
     "start": "node ace serve --watch",
-    "lint": "eslint . --ext=.ts"
+    "lint": "eslint . --ext=.ts",
+    "migrate": "node ace migration:rollback && node ace migration:run"
   },
   "devDependencies": {
     "@adonisjs/assembler": "^2.0.0",
@@ -30,5 +31,8 @@
     "reflect-metadata": "^0.1.13",
     "source-map-support": "^0.5.19",
     "uuid": "^8.1.0"
+  },
+  "engines": {
+    "node": "12.x"
   }
 }
