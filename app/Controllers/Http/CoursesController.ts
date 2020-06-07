@@ -79,6 +79,14 @@ export default class CoursesController {
   }
 
   public async subscribe ({ request, params: { id }, response }: HttpContextContract) {
+    const course = await Course.findOrFail(id)
+
+    if (course.userId === request.user!.id) {
+      return response.unprocessableEntity(
+        UtilsService.formatErrors(['Voce não pode se inscrever no próprio curso'])
+      )
+    }
+
     return response.created(
       await CourseStudent.create({
         courseId: id,
@@ -147,14 +155,6 @@ export default class CoursesController {
 
   // Authenticated
   public async create ({ request, response }: HttpContextContract) {
-    await request.user!.preload('teacher')
-
-    if (!request.user!.teacher) {
-      return response.forbidden(
-        UtilsService.formatErrors(['Voce não é um professor'])
-      )
-    }
-
     const data = await request.validate(SaveCourseValidator)
 
     if (data.minutes < 0 || data.minutes > 99999) {

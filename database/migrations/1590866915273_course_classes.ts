@@ -10,12 +10,14 @@ export default class CourseClasses extends BaseSchema {
       table.string('title', 70).notNullable()
       table.string('youtube_id', 50).notNullable()
       table.string('description', 255).notNullable()
+      table.integer('order').notNullable()
       table.boolean('is_active').defaultTo(true).notNullable()
       table.integer('course_id').notNullable()
 
       table.timestamps(true)
 
       table.foreign('course_id').references('courses.id')
+      table.index('order')
     })
   }
 

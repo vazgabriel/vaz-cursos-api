@@ -19,6 +19,9 @@ export default class CourseClass extends BaseModel {
   @column()
   public description: string
 
+  @column()
+  public order: number
+
   @column({ serializeAs: null })
   public isActive: boolean
 
@@ -35,10 +38,6 @@ export default class CourseClass extends BaseModel {
     pivotColumns: ['created_at'],
   })
   public watchedBy: ManyToMany<typeof User>
-
-  /*
-  bool watched;
-  */
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime

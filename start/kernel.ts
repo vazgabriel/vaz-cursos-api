@@ -42,4 +42,5 @@ Server.middleware.register([
 */
 Server.middleware.registerNamed({
   auth: 'App/Middleware/AuthMiddleware',
+  authTeacher: 'App/Middleware/AuthTeacherMiddleware',
 })
