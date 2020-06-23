@@ -1,16 +1,18 @@
 # Vaz Cursos API
 
+Adonis API (Node.js) for Flutter course app
+
 API em Adonis (Node.js) para curso de Flutter
 
 ## Requirements
 
 [Node.js V12+](https://nodejs.org/)
 
-[NPM V6+](https://www.npmjs.com/) (Vem com Node)
+[NPM V6+](https://www.npmjs.com/)
 
 [Docker Compose](https://docs.docker.com/compose/)
 
-(Opcionalmente pode usar Yarn)
+Optionally you can use yarn (Opcionalmente pode usar Yarn)
 
 ## Installation
 
@@ -18,22 +20,22 @@ API em Adonis (Node.js) para curso de Flutter
 yarn
 ```
 
-OU
+OR (OU)
 
 ```bash
 npm install
 ```
 
-Configure o .env baseado no .env.example
+Config your .env based on .env.example (Configure o .env baseado no .env.example)
 
 ```bash
 cp .env.example .env
-nano .env # Editar valores
+vi .env # Update values (Editar valores)
 ```
 
-## RUN
+## Running
 
-Database
+Database (PostgreSQL)
 
 ```bash
 docker-compose up
@@ -42,5 +44,11 @@ docker-compose up
 Development
 
 ```bash
+# Scripts
+yarn start
+# OR (OU)
+npm start
+
+# Final code
 node ace serve -w
 ```
